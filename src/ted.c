@@ -15,6 +15,20 @@ GlobalCfg config = {
 
 jmp_buf end;
 
+void create_config(char dir[PATH_MAX]) {
+    strcpy(dir, getenv("HOME"));
+    strcat(dir, "/.config");
+
+    struct stat st = {0};
+
+    if (stat(dir, &st) == -1)
+        mkdir(dir, 0777); // FIXME: maybe this is not the best permission
+    
+    strcat(dir, "/ted");
+
+    if (stat(dir, &st) == -1)
+        mkdir(dir, 0777);
+}
 
 int main(int argc, char **argv) {
     int is_input_pipe = !isatty(STDIN_FILENO);
@@ -26,21 +40,12 @@ int main(int argc, char **argv) {
 
     Node *buf = NULL;
     if (argc < 2) {
-        // FIXME: Lots of calls to home_path
+        char buffer[PATH_MAX];
+        create_config(buffer);
+        strcat(buffer, "/buffer");
 
-        struct stat st = {0};
-
-        char *config = home_path(".config/");
-        if (stat(config, &st) == -1)
-            mkdir(config, 0777);
-
-        char *config_ted = home_path(".config/ted/");
-        if (stat(config_ted, &st) == -1)
-            mkdir(config_ted, 0777);
-            
-        char *filename = home_path(".config/ted/buffer");
-        free(config);
-        free(config_ted);
+        char *filename = malloc(strlen(buffer) + 1);
+        strcpy(filename, buffer);
 
         FILE *fp = fopen(filename, "r");
         buf = single_buffer(read_lines(fp, filename, can_write(filename)));
@@ -137,4 +142,3 @@ int main(int argc, char **argv) {
     endwin();
     return 0;
 }
-

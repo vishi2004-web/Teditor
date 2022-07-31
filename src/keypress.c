@@ -1,33 +1,12 @@
 #include "ted.h"
 
-void expand_line(unsigned int at, int x, Buffer *buf) {
-    while (buf->lines[at].len <= buf->lines[at].length + x) {
-        buf->lines[at].len += READ_BLOCKSIZE;
-        buf->lines[at].data = realloc(
-            buf->lines[buf->cursor.y].data,
-            buf->lines[buf->cursor.y].len * sizeof(uchar32_t)
-        );
-    }
-}
+// TODO: rewrite everything here from scratch
+// TODO: separate the actual input processing with the buffer modification,
+//       since it is confusing to have both in the same file
+// FIXME: when the buffer is reallocated, it gets READ_BLOCKSIZE plus space, but
+//        it may be more efficient to have the capacity multiplied by 2 instead
+//        of this, just like most implementations of a dynamic array
 
-void new_line(unsigned int at, int x, Buffer *buf) {
-    buf->lines[at].len = READ_BLOCKSIZE;
-    buf->lines[at].data = malloc(buf->lines[at].len * sizeof(uchar32_t));
-    buf->lines[at].length = 0;
-
-    expand_line(at, buf->lines[at - 1].length - x + 1, buf);
-    memcpy(
-        buf->lines[at].data,
-        &buf->lines[at - 1].data[x],
-        (buf->lines[at - 1].length - x) * sizeof(uchar32_t)
-    );
-
-    buf->lines[at].length += buf->lines[at - 1].length - x;
-    buf->lines[at].data[buf->lines[at].length] = '\0';
-
-    buf->lines[at - 1].length = x;
-    buf->lines[at - 1].data[buf->lines[at - 1].length] = '\0';
-}
 
 bool process_keypress(int c, Node **n) {
     Buffer *buf = &(*n)->data;
@@ -43,16 +22,19 @@ bool process_keypress(int c, Node **n) {
         return parse_command("next", n);
     case KEY_UP:
     case ctrl('p'):
-        change_position(buf->cursor.last_x, buf->cursor.y - (buf->cursor.y > 0), buf);
+        buf->cursor.x = buf->cursor.last_x;
+        cursor_to_valid_position(buf);
+        buf->cursor.y -= buf->cursor.y > 0;
         break;
     case KEY_DOWN:
     case ctrl('n'):
-        change_position(buf->cursor.last_x, buf->cursor.y + 1, buf);
+        buf->cursor.x = buf->cursor.last_x;
+        buf->cursor.y++;
+        cursor_to_valid_position(buf);
         break;
     case KEY_LEFT:
     case ctrl('b'):
-        buf->cursor.x -= (buf->cursor.x > 0);
-        cursor_in_valid_position(buf);
+        buf->cursor.x -= buf->cursor.x > 0;
         buf->cursor.last_x = buf->cursor.x;
         break;
     case KEY_RIGHT:
@@ -65,231 +47,95 @@ bool process_keypress(int c, Node **n) {
     case ctrl('a'):
         buf->cursor.x = 0;
         buf->cursor.last_x = buf->cursor.x;
-        cursor_in_valid_position(buf);
         break;
     case KEY_END:
     case ctrl('e'):
         buf->cursor.x = buf->lines[buf->cursor.y].length;
         buf->cursor.last_x = buf->cursor.x;
-        cursor_in_valid_position(buf);
         break;
     case ctrl('s'):
         if (!buf->read_only)
             savefile(buf);
         break;
-    case '\t':
+    case '\t': // TAB
         if (config.use_spaces == 1) {
-            for (unsigned int i = 0; i < config.tablen; i++)
+            for (size_t i = 0; i < config.tablen; i++)
                 process_keypress(' ', n);
             return false;
         } // else, it will pass though and be added to the buffer
         break;
     case ctrl('g'):
-        if (config_dialog(n))
-            return true;
-        break;
+        return config_dialog(n);
     case ctrl('q'):
-        if (parse_command(
+        return parse_command(
             buf->read_only ? "read-only 0" : "read-only 1",
             n
-        ))
-            return true;
+        );
+    case KEY_PPAGE: { // PAGE_UP
+        buf->cursor.y -= buf->cursor.y % config.lines;
+        buf->cursor.y -= buf->cursor.y >= config.lines
+            ? config.lines
+            : buf->cursor.y;
         break;
-    case KEY_PPAGE:
-    {
-        unsigned int ccy = buf->cursor.y;
-        for (unsigned int i = 0; i < (unsigned int)(ccy % config.lines + config.lines) && buf->cursor.y > 0; i++)
-            buf->cursor.y--;
+    } case KEY_NPAGE: { // PAGE_DOWN
+        buf->cursor.y += 2 * config.lines - buf->cursor.y % config.lines - 1;
         cursor_in_valid_position(buf);
         break;
-    } case KEY_NPAGE:
-    {
-        unsigned int ccy = buf->cursor.y;
-        for (unsigned int i = 0; i < (unsigned int)(config.lines - (ccy % config.lines) - 1 + config.lines) && buf->cursor.y < buf->num_lines - 1; i++)
-            buf->cursor.y++;
-        cursor_in_valid_position(buf);
-        break;
-    } case KEY_MOUSE:
-    {
+    } case KEY_MOUSE: { // Any mouse event
         MEVENT event;
         if (getmouse(&event) == OK)
             process_mouse_event(event, n);
-
         break;
-    } case 0x209:
-    {
+    } case 0x209: { // Control + DELETE
+        if (modify(buf))
+            delete_line(buf->cursor.y, buf);
+        break;
+    } case ctrl('w'): {
         if (modify(buf)) {
-            if (buf->num_lines > 1) {
-                free(buf->lines[buf->cursor.y].data);
-                memmove(
-                    &buf->lines[buf->cursor.y],
-                    &buf->lines[buf->cursor.y + 1],
-                    (buf->num_lines - buf->cursor.y - 1) * sizeof(*buf->lines)
-                );
-                buf->lines = realloc(buf->lines, --buf->num_lines * sizeof(*buf->lines));
-            } else {
-                buf->lines[buf->cursor.y].data[0] = '\0';
-                buf->lines[buf->cursor.y].length = 0;
-            }
-            cursor_in_valid_position(buf);
+            // FIXME: reimplement Ctrl-W
         }
         break;
-    } case ctrl('w'):
-    {
-        bool passed_spaces = 0;
-        while (buf->cursor.x > 0 && (!strchr(config.word_separators, buf->lines[buf->cursor.y].data[buf->cursor.x - 1]) || !passed_spaces)) {
-            if (!remove_char(buf->cursor.x - 1, buf->cursor.y, buf))
-                break;
-            process_keypress(KEY_LEFT, n);
-            if (buf->cursor.x > 0 && !strchr(config.word_separators, buf->lines[buf->cursor.y].data[buf->cursor.x - 1]))
-                passed_spaces = 1;
-        }
-        break;
-    } case ctrl('o'):
-    {
+    } case ctrl('o'): {
         char *d = prompt("open: ", buf->filename);
         if (d)
             open_file(d, n);
         break;
-    } case CTRL_KEY_LEFT:
-    {
-        char passed_spaces = 0;
-        while (buf->cursor.x > 0) {
-            process_keypress(KEY_LEFT, n);
-            if (!strchr(config.word_separators, buf->lines[buf->cursor.y].data[buf->cursor.x]))
-                passed_spaces = 1;
-            if (strchr(config.word_separators, buf->lines[buf->cursor.y].data[buf->cursor.x]) && passed_spaces) {
-                process_keypress(KEY_RIGHT, n);
-                break;
-            }
-        }
+    } case CTRL_KEY_LEFT: { // Control + KEY_LEFT
+        // FIXME: reimplement this
         break;
     }
-    case CTRL_KEY_RIGHT:
-    {
-        char passed_spaces = 0;
-        while (buf->lines[buf->cursor.y].data[buf->cursor.x] != '\0' && !(strchr(config.word_separators, buf->lines[buf->cursor.y].data[buf->cursor.x]) && passed_spaces)) {
-            if (!strchr(config.word_separators, buf->lines[buf->cursor.y].data[buf->cursor.x]))
-                passed_spaces = 1;
-            process_keypress(KEY_RIGHT, n);
+    case CTRL_KEY_RIGHT: { // Control + KEY_RIGHT
+        // FIXME: reimplement this
+        break;
+    } case KEY_BACKSPACE: case KEY_DC: case 127: { // BACKSPACE; DELETE; DELETE
+        if (modify(buf)) {
+            // FIXME: reimplement this
         }
         break;
-    } case KEY_BACKSPACE: case KEY_DC: case 127:
-    {
+    } case '\n': case KEY_ENTER: case '\r': { // NEWLINE; ENTER; CARRIAGE RETURN
         if (modify(buf)) {
-            buf->lines[buf->cursor.y].ident -= buf->cursor.x <= buf->lines[buf->cursor.y].ident && buf->cursor.x > 0;
+            // FIXME: reimplement this
 
-            if (buf->cursor.x >= 1) {
-                if (remove_char(buf->cursor.x - 1, buf->cursor.y, buf))
-                    process_keypress(KEY_LEFT, n);
-            } else if (buf->cursor.y > 0) {
-                Line del_line = buf->lines[buf->cursor.y];
-                memmove(
-                    &buf->lines[buf->cursor.y],
-                    &buf->lines[buf->cursor.y + 1],
-                    (buf->num_lines - buf->cursor.y - 1) * sizeof(*buf->lines)
-                );
-                buf->lines = realloc(buf->lines, --buf->num_lines * sizeof(*buf->lines));
-
-                buf->cursor.y -= buf->cursor.y > 0;
-                buf->cursor.x = buf->lines[buf->cursor.y].length;
-                cursor_in_valid_position(buf);
-
-                process_keypress(KEY_RIGHT, n);
-                expand_line(buf->cursor.y, del_line.length, buf);
-
-                memmove(
-                    &buf->lines[buf->cursor.y].data[buf->lines[buf->cursor.y].length],
-                    del_line.data,
-                    del_line.length * sizeof(uchar32_t)
-                );
-                buf->lines[buf->cursor.y].length += del_line.length;
-
-                buf->lines[buf->cursor.y].data[buf->lines[buf->cursor.y].length] = '\0';
-
-                free(del_line.data);
-            }
-
-            buf->lines[buf->cursor.y].ident = 0;
-            for (unsigned int i = 0; buf->lines[buf->cursor.y].data[i] != '\0'; i++) {
-                if (buf->lines[buf->cursor.y].data[i] != ' ')
-                    break;
-                buf->lines[buf->cursor.y].ident++;
-            }
-        }
-        break;
-    } case '\n': case KEY_ENTER: case '\r':
-    {
-        if (modify(buf)) {
-            buf->lines = realloc(buf->lines, (buf->num_lines + 1) * sizeof(*buf->lines));
-            memmove(
-                &buf->lines[buf->cursor.y + 2],
-                &buf->lines[buf->cursor.y + 1],
-                (buf->num_lines - buf->cursor.y - 1) * sizeof(*buf->lines)
-            );
-            buf->num_lines++;
-
-            unsigned int lcx = buf->cursor.x;
-            buf->cursor.last_x = 0;
-            buf->cursor.y++;
-            buf->cursor.x = 0;
-            cursor_in_valid_position(buf);
-            new_line(buf->cursor.y, lcx, buf);
-
-            if (config.autotab == 1) {
-                const unsigned int ident = buf->lines[buf->cursor.y - 1].ident;
-                buf->lines[buf->cursor.y].ident = ident;
-                buf->lines[buf->cursor.y].len += ident + 1;
-                buf->lines[buf->cursor.y].data = realloc(buf->lines[buf->cursor.y].data, buf->lines[buf->cursor.y].len * sizeof(uchar32_t));
-                memmove(&buf->lines[buf->cursor.y].data[ident], buf->lines[buf->cursor.y].data, (buf->lines[buf->cursor.y].length + 1) * sizeof(uchar32_t));
-
-                for (unsigned int i = 0; i < ident; i++)
-                    buf->lines[buf->cursor.y].data[i] = ' ';
-                buf->lines[buf->cursor.y].length += ident;
-
-                for (unsigned int i = 0; i < ident; i++)
-                    process_keypress(KEY_RIGHT, n);
-            } else
-                buf->lines[buf->cursor.y].ident = 0;
+            // TODO: implement autotab here
         }
         break;
     }
     }
 
     if (isprint(c) || c == '\t' || (c >= 0xC0 && c <= 0xDF) || (c >= 0xE0 && c <= 0xEF) || (c >= 0xF0 && c <= 0xF7)) {
-
         if (modify(buf)) {
-            if (c == ' ' && buf->cursor.x <= buf->lines[buf->cursor.y].ident)
-                buf->lines[buf->cursor.y].ident++;
-
+            unsigned char len = utf8_size(c);
             unsigned char ucs[4] = {c, 0, 0, 0};
-            int len = 1;
 
-            if ((c >= 0xC2 && c <= 0xDF) || (c >= 0xE0 && c <= 0xEF) || (c >= 0xF0 && c <= 0xF4)) {
-                ucs[1] = getch(), len++;
-            }
-            if ((c >= 0xE0 && c <= 0xEF) || (c >= 0xF0 && c <= 0xF4)) {
-                ucs[2] = getch(), len++;
-            }
-            if (c >= 0xF0 && c <= 0xF4) {
-                ucs[3] = getch(), len++;
-            }
+            for (unsigned char i = 1; i < len; i++)
+                ucs[i] = getch();
 
             if (validate_utf8(ucs)) {
-                uchar32_t ec = c;
-                for (int i = 1, off = 8; i < len; i++, off += 8)
-                    ec += ucs[i] << off;
-
-                if (add_char(buf->cursor.x, buf->cursor.y, ec, buf))
+                uchar32_t c = utf8_to_utf32(ucs);
+                if (add_char(buf->cursor.x, buf->cursor.y, c, buf))
                     process_keypress(KEY_RIGHT, n);
-            } else {
-                for (int i = 0; i < len; i++) {
-                    if (add_char(buf->cursor.x, buf->cursor.y, substitute_char, buf))
-                        process_keypress(KEY_RIGHT, n);
-                    else
-                        break;
-                }
-            }
+            } else
+                message("Invalid input, is your terminal UTF-8?");
         }
     }
     return false;

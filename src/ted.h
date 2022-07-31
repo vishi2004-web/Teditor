@@ -44,10 +44,9 @@
 typedef uint32_t uchar32_t;
 
 typedef struct {
-    unsigned int len;
     uchar32_t *data;
-    unsigned int length;
-    unsigned int ident;
+    size_t capacity;
+    size_t length;
 } Line;
 
 typedef struct {
@@ -57,8 +56,8 @@ typedef struct {
 } Cursor;
 
 typedef struct {
-    unsigned int x;
-    unsigned int y;
+    size_t x;
+    size_t y;
 } TextScroll;
 
 typedef struct {
@@ -76,7 +75,7 @@ typedef struct {
 
 typedef struct {
     bool strict_utf8; // high/low surrogates will be replaced (for now leave it always set)
-    unsigned int tablen;
+    size_t tablen;
     int lines;
     bool use_spaces;
     bool autotab;
@@ -129,14 +128,12 @@ void expand_line(unsigned int at, int x, Buffer *buf);
 void new_line(unsigned int at, int x, Buffer *buf);
 bool process_keypress(int c, Node **n);
 
-// cursor_in_valid_position.c
-void cursor_in_valid_position(Buffer *buf);
-void change_position(unsigned int x, unsigned int y, Buffer *buf);
-
 // mouse.c
 bool process_mouse_event(MEVENT ev, Node **n);
 
 // utf8.c
+unsigned char utf8_size(unsigned char c);
+uchar32_t utf8_to_utf32(unsigned char ucs[4]);
 void utf8ReadFile(unsigned char uc, uchar32_t *out, FILE *fp_);
 int utf8ToMultibyte(uchar32_t c, unsigned char *out, bool validate);
 bool validate_utf8(unsigned char *ucs);
@@ -154,7 +151,6 @@ Line blank_line(void);
 char *bufn(int a);
 
 // modify.c
-bool modify(Buffer *buf);
 bool add_char(int x, int y, uchar32_t c, Buffer *buf);
 bool remove_char(int x, int y, Buffer *buf);
 
@@ -170,6 +166,12 @@ void buffer_add_prev(Node *n, Buffer b);
 void buffer_close(Node *n);
 void free_buffer_list(Node *n);
 
+// buffer.c
+void cursor_to_valid_position(Buffer *buf);
+bool modify(Buffer *buf);
+
+// line.c
+size_t get_ident(Line *ln);
 
 extern GlobalCfg config;
 extern char *menu_message;

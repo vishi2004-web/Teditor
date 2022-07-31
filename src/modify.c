@@ -1,13 +1,5 @@
 #include "ted.h"
 
-bool modify(Buffer *buf) {
-    if (buf->read_only)
-        message("Can't modify a read-only file.");
-    else
-        buf->modified = 1;
-
-    return !buf->read_only;
-}
 
 bool add_char(int x, int y, uchar32_t c, Buffer *buf) {
     if (modify(buf)) {

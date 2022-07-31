@@ -1,7 +1,6 @@
-#include "ted.h"
 
-// Should be called after changing cursor position
-void cursor_in_valid_position(Buffer *buf) {
+// Should be called after incrementing the cursor position
+void cursor_to_valid_position(Buffer *buf) {
     /* Check if cursor is inside the borders */
     // y
     if (buf->cursor.y >= buf->num_lines)
@@ -11,9 +10,11 @@ void cursor_in_valid_position(Buffer *buf) {
         buf->cursor.x = buf->lines[buf->cursor.y].length;
 }
 
-void change_position(unsigned int x, unsigned int y, Buffer *buf) {
-    buf->cursor.y = y;
-    buf->cursor.x = x;
-    cursor_in_valid_position(buf);
-}
+bool modify(Buffer *buf) {
+    if (buf->read_only)
+        message("Can't modify a read-only file.");
+    else
+        buf->modified = 1;
 
+    return !buf->read_only;
+}

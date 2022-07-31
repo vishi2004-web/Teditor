@@ -12,6 +12,24 @@ Utf8 sequences range
 4 bytes sequence (1* INCLUSIVE 0xF0 - 0xF4) (2* INCLUSIVE 0x90 - 0xBF) (3* INCLUSIVE 0x80 - 0xBF) (4* INCLUSIVE 0x80 - 0xBF)
 */
 
+unsigned char utf8_size(unsigned char c) {
+    if (c >= 0xF0 && c <= 0xF4)
+        return 4;
+    if (c >= 0xE0 && c <= 0xEF)
+        return 3;
+    if (c >= 0xC2 && c <= 0xDF)
+        return 2;
+    return 1;
+}
+
+uchar32_t utf8_to_utf32(unsigned char ucs[4]) {
+    uchar32_t c = 0;
+    for (int i = 0, off = 0; i < len; i++, off += 8)
+        c += ucs[i] << off;
+    return c;
+}
+
+// FIXME: reimplement
 void utf8ReadFile(unsigned char uc, uchar32_t *out, FILE *fp_) {
     if (uc <= 0x7F) {
         *out = uc;
@@ -103,7 +121,7 @@ int utf8ToMultibyte(uchar32_t c, unsigned char *out, bool validate) {
     }
 
 invalid: // may do other things here
-    return validate ? -1 : 1; //threat as a single char
+    return validate ? -1 : 1; // threat as a single char
 }
 
 bool validate_utf8(unsigned char *ucs) {
