@@ -112,9 +112,8 @@ bool process_keypress(int c, Node **n) {
         // FIXME: reimplement this
         break;
     } case KEY_BACKSPACE: case KEY_DC: case 127: { // BACKSPACE; DELETE; DELETE
-        if (modify(buf)) {
-            // FIXME: reimplement this
-        }
+        if (modify(buf))
+            delete_character_before_selected(buf);
         break;
     } case '\n': case KEY_ENTER: case '\r': { // NEWLINE; ENTER; CARRIAGE RETURN
         if (modify(buf)) {

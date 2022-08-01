@@ -6,7 +6,6 @@ size_t get_ident(Line *ln) {
 }
 
 
-
 void free_line(Line *line) {
     free(line->data);
     free(line);
@@ -20,6 +19,14 @@ Line *single_line() {
     Line *r = malloc(sizeof ln);
     memcpy(r, &ln, sizeof ln);
     return r;
+}
+
+void line_reserve(size_t space, Line *line) {
+    if (line->len + space > line->cap)
+        while (line->len + space > line->cap)
+            line->cap *= 2;
+    
+    line->data = realloc(line->data, line->cap);
 }
 
 Line *prev_line(Line *line) {
@@ -40,4 +47,15 @@ void delete_line(Line *line) {
         line.next.prev = line.prev;
 
     free_line(line);
+}
+
+void delete_character_from_line(size_t index, Line *line) {
+    memmove(&line.data[index], &line.data[index + 1], line.len - index - 1);
+    line.len--;
+}
+
+void append_line_to_line(Line a, Line *line) {
+    line_reserve(a.len, line);
+    memcpy(&line->data[line->len], a.data, a.len);
+    line->len += a.len;
 }
