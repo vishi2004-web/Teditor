@@ -9,7 +9,7 @@
 
 
 bool process_keypress(int c, Node **n) {
-    Buffer *buf = &(*n)->data;
+    Buffer *buf = (*n)->data;
     if (c != ERR)
         message("");
 
@@ -24,13 +24,13 @@ bool process_keypress(int c, Node **n) {
     case ctrl('p'):
         buf->cursor.x = buf->cursor.last_x;
         cursor_to_valid_position(buf);
-        buf->cursor.y -= buf->cursor.y > 0;
+        buf->cursor.y = prev_line(buf->cursor.y);
         break;
     case KEY_DOWN:
     case ctrl('n'):
         buf->cursor.x = buf->cursor.last_x;
-        buf->cursor.y++;
         cursor_to_valid_position(buf);
+        buf->cursor.y = next_line(buf->cursor.y);
         break;
     case KEY_LEFT:
     case ctrl('b'):
@@ -72,14 +72,18 @@ bool process_keypress(int c, Node **n) {
             n
         );
     case KEY_PPAGE: { // PAGE_UP
+        /*
         buf->cursor.y -= buf->cursor.y % config.lines;
         buf->cursor.y -= buf->cursor.y >= config.lines
             ? config.lines
             : buf->cursor.y;
+            */
+        // TODO: reimplement
         break;
     } case KEY_NPAGE: { // PAGE_DOWN
-        buf->cursor.y += 2 * config.lines - buf->cursor.y % config.lines - 1;
-        cursor_in_valid_position(buf);
+        /*buf->cursor.y += 2 * config.lines - buf->cursor.y % config.lines - 1;
+        cursor_in_valid_position(buf);*/
+        // TODO: reimplement
         break;
     } case KEY_MOUSE: { // Any mouse event
         MEVENT event;
@@ -88,7 +92,7 @@ bool process_keypress(int c, Node **n) {
         break;
     } case 0x209: { // Control + DELETE
         if (modify(buf))
-            delete_line(buf->cursor.y, buf);
+            delete_selected_line(buf);
         break;
     } case ctrl('w'): {
         if (modify(buf)) {
@@ -124,17 +128,15 @@ bool process_keypress(int c, Node **n) {
 
     if (isprint(c) || c == '\t' || (c >= 0xC0 && c <= 0xDF) || (c >= 0xE0 && c <= 0xEF) || (c >= 0xF0 && c <= 0xF7)) {
         if (modify(buf)) {
-            unsigned char len = utf8_size(c);
+            size_t len = utf8_size(c);
             unsigned char ucs[4] = {c, 0, 0, 0};
 
-            for (unsigned char i = 1; i < len; i++)
+            for (size_t i = 1; i < len; i++)
                 ucs[i] = getch();
 
-            if (validate_utf8(ucs)) {
-                uchar32_t c = utf8_to_utf32(ucs);
-                if (add_char(buf->cursor.x, buf->cursor.y, c, buf))
-                    process_keypress(KEY_RIGHT, n);
-            } else
+            if (validate_utf8(ucs))
+                type_character(utf8_to_utf32(ucs), buf);
+            else
                 message("Invalid input, is your terminal UTF-8?");
         }
     }

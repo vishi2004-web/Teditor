@@ -43,21 +43,24 @@
 
 typedef uint32_t uchar32_t;
 
-typedef struct {
+typedef struct Line {
     uchar32_t *data;
     size_t capacity;
     size_t length;
+
+    struct Line *next;
+    struct Line *prev;
 } Line;
 
 typedef struct {
     size_t x;
     size_t last_x;
-    size_t y;
+    Line *y;
 } Cursor;
 
 typedef struct {
     size_t x;
-    size_t y;
+    Line *y;
 } TextScroll;
 
 typedef struct {
@@ -65,8 +68,6 @@ typedef struct {
     bool read_only;
     bool can_write;
     unsigned char line_break_type; // 0: LF  1: CRLF
-    Line *lines;
-    size_t num_lines;
     Cursor cursor;
     TextScroll scroll;
     char *name;
@@ -109,7 +110,7 @@ bool config_dialog(Node **n);
 int run_command(char **words, int words_len, Node **n);
 bool parse_command(char *command, Node **n);
 
-// open_and_save.c
+// fileio.c
 void savefile(Buffer *buf);
 Buffer read_lines(FILE *fp, char *filename, bool read_only);
 unsigned char detect_linebreak(FILE *fp);
