@@ -45,8 +45,8 @@ typedef uint32_t uchar32_t;
 
 typedef struct Line {
     uchar32_t *data;
-    size_t capacity;
-    size_t length;
+    size_t cap;
+    size_t len;
 
     struct Line *next;
     struct Line *prev;
@@ -148,12 +148,7 @@ int calculate_len_line_number(Buffer buf);
 int uchar32_cmp(const uchar32_t *s1, const char *s2, unsigned int stringlen);
 int uchar32_casecmp(const uchar32_t *s1, const char *s2, unsigned int stringlen);
 int uchar32_sub(const uchar32_t *hs, const char *sub, unsigned int hslen, unsigned int sublen);
-Line blank_line(void);
 char *bufn(int a);
-
-// modify.c
-bool add_char(int x, int y, uchar32_t c, Buffer *buf);
-bool remove_char(int x, int y, Buffer *buf);
 
 // scroll.c
 void calculate_scroll(Buffer *buf, int len_line_number);
@@ -168,11 +163,28 @@ void buffer_close(Node *n);
 void free_buffer_list(Node *n);
 
 // buffer.c
+Buffer empty_buffer();
+void clear_line_existence(Line *line, Buffer *buf);
+void delete_selected_line(Buffer *buf);
+void delete_character_before_selected(Buffer *buf);
+void break_selected_line(Buffer *buf);
+
+
 void cursor_to_valid_position(Buffer *buf);
 bool modify(Buffer *buf);
 
 // line.c
 size_t get_ident(Line *ln);
+void free_line(Line *line);
+Line *single_line(size_t cap);
+void line_reserve(size_t space, Line *line);
+Line *prev_line(Line *line);
+Line *next_line(Line *line);
+void blank_line(Line *line);
+void delete_line(Line *line);
+void append_line(Line *a, Line *line);
+void delete_character_from_line(size_t index, Line *line);
+void append_line_to_line(Line a, Line *line);
 
 extern GlobalCfg config;
 extern char *menu_message;

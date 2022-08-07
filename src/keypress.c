@@ -116,11 +116,8 @@ bool process_keypress(int c, Node **n) {
             delete_character_before_selected(buf);
         break;
     } case '\n': case KEY_ENTER: case '\r': { // NEWLINE; ENTER; CARRIAGE RETURN
-        if (modify(buf)) {
-            // FIXME: reimplement this
-
-            // TODO: implement autotab here
-        }
+        if (modify(buf))
+            break_selected_line(buf);
         break;
     }
     }

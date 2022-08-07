@@ -11,7 +11,7 @@
 #define BOOL_SET(a) BOOL_COMMAND((a) = 1;, (a) = 0;);
 
 #define DEF_COMMAND(a, b) \
-    static bool (a)(char **words, unsigned int words_len, Node **n) { \
+    static bool (a)(char **words, size_t words_len, Node **n) { \
         Buffer *buf = &(*n)->data; \
         /* Only for suppressing warnings */ \
         USE(words); \
@@ -52,34 +52,32 @@ DEF_COMMAND(save_as, {
     if (words_len == 1) {
         free(buf->filename);
 
-        unsigned int size = (strlen(words[0]) + 1) * sizeof(char);
-        buf->filename = malloc(size);
-        memcpy(buf->filename, words[0], size);
+        size_t len = strlen(words[0]);
+        buf->filename = malloc(len + 1);
+        memcpy(buf->filename, words[0], len + 1);
 
-        // Permissions may change since the last time it was detected
-        buf->can_write = can_write(buf->filename);
-
-        if (buf->can_write)
-            savefile(buf);
-        else
+        if (!savefile(buf))
             message("Can't save, no permission to write");
     }
 })
 
 DEF_COMMAND(manual, {
-    if (words_len == 0) {
-        open_file(home_path(".config/ted/docs/help.txt"), n);
-        buf->read_only = 1;
-    } else if (words_len > 0) {
-        char fname[1000];
-        char *p = fname;
+    if (words_len > 0) {
+        char filename[PATH_MAX];
+        char *p = filename;
+
         p += sprintf(p, ".config/ted/docs");
+
         for (size_t i = 0; i < words_len; i++)
             p += sprintf(p, "/%s", words[i]);
+
         p += sprintf(p, ".txt");
+
         open_file(home_path(fname), n);
-        buf->read_only = 1;
-    }
+    } else
+        open_file(home_path(".config/ted/docs/help.txt"), n);
+
+    buf->read_only = 1;
 })
 
 DEF_COMMAND(read_only, {
@@ -120,25 +118,25 @@ DEF_COMMAND(find, {
 })
 
 DEF_COMMAND(eof, {
-    if (words_len == 0)
-        change_position(buf->lines[buf->num_lines - 1].length, buf->num_lines, buf);
+    if (words_len == 0) {
+        while (buf->cursor.y->next)
+            buf->cursor.y = buf->cursor.y->next;
+        buf->cursor.x = buf->cursor.y->len;
+    }
 })
 
 DEF_COMMAND(next, *n = (*n)->next;)
 DEF_COMMAND(prev, *n = (*n)->prev;)
 DEF_COMMAND(close_buffer, {
     if (buf->modified) {
-        char *prt = prompt_hints("Unsaved changes: ", "", "'exit' to exit", NULL);
-        if (prt && !strcmp("exit", prt)) {
+        char *prt = prompt_hints("Unsaved changes:", "", "exit", NULL);
+        if (!prt || strcmp("exit", prt) != 0) {
             free(prt);
-            goto GOODBYE_BUFFER;
+            return false;
         }
         free(prt);
-        return false;
-    } else
-        goto GOODBYE_BUFFER;
+    }
 
-    GOODBYE_BUFFER:
     if ((*n)->next == *n)
         return true;
     *n = (*n)->prev;
@@ -147,7 +145,7 @@ DEF_COMMAND(close_buffer, {
 
 struct {
     const char *name;
-    bool (*function)(char **words, unsigned int words_len, Node **n);
+    bool (*function)(char **words, size_t words_len, Node **n);
 } fns[] = {
     {"tablen"           , tablen            },
     {"linebreak"        , linebreak         },

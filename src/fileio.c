@@ -1,6 +1,17 @@
 #include "ted.h"
 
-void savefile(Buffer *buf) {
+bool savefile(Buffer *buf) {
+    // FIXME: this shows that the idea of `can_write` is not the best one,
+    // maybe remove it and keep only `read_only`, setting it on if the file
+    // is not writable at the moment it was opened, but letting the user
+    // change it if he is sure he can write
+
+    // Permissions may change since the last time it was detected
+    buf->can_write = can_write(buf->filename);
+
+    if (!buf->can_write)
+        return false;
+
     FILE *fpw = fopen(buf->filename, "w");
 
     if (fpw == NULL) {
@@ -32,81 +43,63 @@ void savefile(Buffer *buf) {
     fclose(fpw);
 
     buf->modified = 0;
+
+    return true;
 }
 
-Buffer read_lines(FILE *fp, char *filename, bool can_write) {
-    static int buffer_count = -1;
-    buffer_count++;
-    Buffer b = {
-        0,                  // Modified
-        !can_write,         // read-only
-        can_write,          // data can be written to the buffer
-        0,                  // line break type: defaults to LF
-        NULL,               // lines
-        0,                  // number of lines
-        {0, 0, 0},          // Cursor (x, last_x, y)
-        {0, 0},             // Scroll (x, y)
-        bufn(buffer_count), // Buffer Name
-        filename,
-    };
+Buffer read_file_into_buffer(FILE *fp, char *filename, bool can_write) {
+    Buffer b = empty_buffer();
+
+    b.read_only = !can_write;
+    b.can_write = can_write;
+    b.filename = filename;
+
     if (!fp) {
-        b.num_lines = 1;
-        b.lines = malloc(b.num_lines * sizeof(*(b.lines)));
-        b.lines[0] = blank_line();
         b.modified = 1;
         return b;
     }
 
     b.line_break_type = detect_linebreak(fp);
 
-    b.num_lines = 0;
-    for (unsigned int i = 0; !feof(fp); i++) {
+    Line *line = b.cursor.y;
 
-        if (fgetc(fp) == EOF && b.num_lines > 0)
-            break;
-        else
-            fseek(fp, -1, SEEK_CUR);
+    while (!feof(fp)) {
+        append_line(single_line(0), line);
+        line = line->next;
 
-        b.lines = realloc(b.lines, ++b.num_lines * sizeof(*(b.lines)));
-
-        b.lines[i] = blank_line();
-
-        char c;
-        unsigned int j;
-        char passed_spaces = 0;
-
-        for (j = 0; (c = fgetc(fp)) != '\n' && c != EOF; j++) {
+        for (size_t i = 0; !feof(fp); i++) {
             if (c == '\r')
                 continue;
 
-            if (b.lines[i].length + 1 >= b.lines[i].len) {
-                b.lines[i].len += READ_BLOCKSIZE;
-                b.lines[i].data = realloc(b.lines[i].data, b.lines[i].len * sizeof(*b.lines[i].data));
-            }
+            char c = fgetc(fp);
 
-            if (passed_spaces == 0 && c != ' ')
-                passed_spaces = 1;
-            else if (passed_spaces == 0)
-                b.lines[i].ident++;
+            if (c == '\n')
+                break;
 
-            unsigned char uc = c;
-            utf8ReadFile(uc, &b.lines[i].data[j], fp);
-            b.lines[i].length++;
+            line_reserve(1, line);
+
+            unsigned char ucs[4] = {c, 0, 0, 0};
+            for (size_t i = 1; i < len; i++)
+                ucs[i] = fgetc(fp);
+
+            line.data[i] = validate_utf8(ucs)
+                ? utf8_to_utf32(ucs) : substitute_char;
+
+            utf8ReadFile(uc, line.data + i, fp);
+            line.len++;
         }
-        
-        b.lines[i].data[j] = '\0';
-        
-        if (b.line_break_type == 1)
-            fgetc(fp);
     }
+
+    delete_selected_line(&b);
+
     return b;
 }
 
 unsigned char detect_linebreak(FILE *fp) {
     unsigned char line_break_type = 0;
-    char c;
+
     while (!feof(fp)) {
-        c = fgetc(fp);
+        char c = fgetc(fp);
 
         if (c == '\r') {
             line_break_type = 1;
@@ -116,6 +109,7 @@ unsigned char detect_linebreak(FILE *fp) {
             break;
         }
     }
+
     rewind(fp);
     return line_break_type;
 }
