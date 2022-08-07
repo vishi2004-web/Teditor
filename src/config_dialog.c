@@ -89,28 +89,43 @@ DEF_COMMAND(read_only, {
     }
 })
 
-// FIXME: this code is horrible
 DEF_COMMAND(find, {
-    int from_cur = 0;
-    if (words_len == 2 && !strcmp(words[0], "cursor"))
-        from_cur = 1;
-    if (words_len == 1 || words_len == 2) {
-        unsigned int len = strlen(words[words_len - 1]);
-        int index;
-        for (unsigned int at = from_cur ? buf->cursor.y : 0; at < buf->num_lines; ++at) {
-            if (buf->lines[at].length >= len &&
-                (index = uchar32_sub(
-                    from_cur && at == buf->cursor.y ? &buf->lines[at].data[buf->cursor.x] : buf->lines[at].data,
-                    words[words_len - 1], buf->lines[at].length,
-                    len
-                )) >= 0
-            ) {
-                change_position(index + len + (from_cur && at == buf->cursor.y) * buf->cursor.x, at, buf);
+    Line *line = buf->cursor.y;
+
+    bool from_cursor = words_len == 2 && !strcmp(words[0], "cursor");
+
+    if (!from_cursor)
+        while (line->prev)
+            line = line.prev
+    
+    // TODO: work with spaces too
+    size_t len = strlen(words[words_len - 1]);
+
+    while (line) {
+        if (line.len >= len) {
+            
+
+            index = uchar32_sub(
+                // TODO: fix this line (confusing and big)
+                from_cursor && line == buf->cursor.y ? &line.data[buf->cursor.x] : line.data
+                words[words_len - 1],
+                line.len, len
+            );
+            if (index >= 0) {
+                if (from_cursor && line == buf->cursor.y)
+                    buf->cursor.x += index + len;
+                else
+                    buf->cursor.x = index + len;
+
+                buf->cursor.y = line;
+
                 return false;
             }
         }
-        message("Substring not found");
+
+        line = line->next;
     }
+    message("Substring not found");
 })
 
 DEF_COMMAND(sof, {

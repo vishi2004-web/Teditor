@@ -26,7 +26,7 @@ bool savefile(Buffer *buf) {
     while (line->prev)
         line = line->prev;
 
-    while (line->next) {
+    while (line) {
         for (size_t i = 0; i < line.len; i++) {
             unsigned char b[4];
             int len = utf8ToMultibyte(line.data[j], b, 0);
@@ -39,6 +39,7 @@ bool savefile(Buffer *buf) {
             else
                 fputs("\r\n", fpw);
         }
+        line = line->next;
     }
 
     fclose(fpw);
