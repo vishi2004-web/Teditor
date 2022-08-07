@@ -37,16 +37,12 @@ DEF_COMMAND(linebreak, {
             buf->line_break_type = 0;
         else if (!strcasecmp(words[0], "CRLF"))
             buf->line_break_type = 1;
-        else if (!strcasecmp(words[0], "CR"))
-            buf->line_break_type = 2;
     }
 })
 
 
-DEF_COMMAND(insert_newline, BOOL_SET(config.insert_newline))
 DEF_COMMAND(use_spaces, BOOL_SET(config.use_spaces))
 DEF_COMMAND(autotab, BOOL_SET(config.autotab))
-DEF_COMMAND(automatch, BOOL_SET(config.automatch))
 
 DEF_COMMAND(save_as, {
     if (words_len == 1) {
@@ -117,12 +113,16 @@ DEF_COMMAND(find, {
     }
 })
 
+DEF_COMMAND(sof, {
+    while (buf->cursor.y->prev)
+        buf->cursor.y = buf->cursor.y->prev;
+    buf->cursor.x = 0;
+})
+
 DEF_COMMAND(eof, {
-    if (words_len == 0) {
-        while (buf->cursor.y->next)
-            buf->cursor.y = buf->cursor.y->next;
-        buf->cursor.x = buf->cursor.y->len;
-    }
+    while (buf->cursor.y->next)
+        buf->cursor.y = buf->cursor.y->next;
+    buf->cursor.x = buf->cursor.y->len;
 })
 
 DEF_COMMAND(next, *n = (*n)->next;)
@@ -149,14 +149,13 @@ struct {
 } fns[] = {
     {"tablen"           , tablen            },
     {"linebreak"        , linebreak         },
-    {"insert-newline"   , insert_newline    },
     {"use-spaces"       , use_spaces        },
     {"autotab"          , autotab           },
-    {"automatch"        , automatch         },
     {"save-as"          , save_as           },
     {"manual"           , manual            },
     {"read-only"        , read_only         },
     {"find"             , find              },
+    {"sof"              , sof               },
     {"eof"              , eof               },
     {"next"             , next              },
     {"prev"             , prev              },
@@ -166,15 +165,14 @@ struct {
 
 Hints hints[] = {
     {"tablen"           , "<tablen>"                     },
-    {"linebreak"        , "LF | CR | CRLF"               },
-    {"insert-newline"   , "f | t"                        },
+    {"linebreak"        , "LF | CRLF"                    },
     {"use-spaces"       , "f | t"                        },
     {"autotab"          , "f | t"                        },
-    {"automatch"        , "f | t"                        },
     {"save-as"          , "<filename>"                   },
     {"manual"           , "<page (nothing for index)>"   },
     {"read-only"        , "f | t"                        },
     {"find"             , "(start | cursor) <substring>" },
+    {"sof"              , ""                             },
     {"eof"              , ""                             },
     {"next"             , ""                             },
     {"prev"             , ""                             },

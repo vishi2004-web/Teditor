@@ -22,24 +22,25 @@ bool savefile(Buffer *buf) {
         return;
     }
 
-    if (config.insert_newline && buf->lines[buf->num_lines - 1].length > 0) {
-        buf->lines = realloc(buf->lines, ++buf->num_lines * sizeof(*buf->lines));
-        buf->lines[buf->num_lines - 1] = blank_line();
-    }
+    Line *line = buf->cursor.y;
+    while (line->prev)
+        line = line->prev;
 
-    for (unsigned int i = 0; i < buf->num_lines; i++) {
-        for (unsigned int j = 0; j < buf->lines[i].length; j++) {
+    while (line->next) {
+        for (size_t i = 0; i < line.len; i++) {
             unsigned char b[4];
-            int len = utf8ToMultibyte(buf->lines[i].data[j], b, 0);
+            int len = utf8ToMultibyte(line.data[j], b, 0);
             fwrite(b, sizeof(unsigned char), len, fpw);
         }
-        if (buf->num_lines > 1) {
+
+        if (line->next) {
             if (buf->line_break_type == 0)
                 fputc('\n', fpw);
             else
                 fputs("\r\n", fpw);
         }
     }
+
     fclose(fpw);
 
     buf->modified = 0;

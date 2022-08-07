@@ -10,7 +10,7 @@ TODO: use wcwidth and replace code points for grapheme clusters in order to have
 char *menu_message = "";
 
 GlobalCfg config = {
-    1, 4, 0, 0, 1, 1, 1, " \t~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
+    1, NULL, 4, 1, 1,
 };
 
 jmp_buf end;

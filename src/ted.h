@@ -76,13 +76,10 @@ typedef struct {
 
 typedef struct {
     bool strict_utf8; // high/low surrogates will be replaced (for now leave it always set)
-    size_t tablen;
     int lines;
+    size_t tablen;
     bool use_spaces;
     bool autotab;
-    bool automatch;
-    bool insert_newline;
-    char *word_separators;
 } GlobalCfg;
 
 typedef struct {
