@@ -108,7 +108,7 @@ int run_command(char **words, int words_len, Node **n);
 bool parse_command(char *command, Node **n);
 
 // fileio.c
-void savefile(Buffer *buf);
+bool savefile(Buffer *buf);
 Buffer read_lines(FILE *fp, char *filename, bool read_only);
 unsigned char detect_linebreak(FILE *fp);
 void open_file(char *fname, Node **n);

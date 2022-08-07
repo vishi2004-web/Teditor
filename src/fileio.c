@@ -9,8 +9,11 @@ bool savefile(Buffer *buf) {
     // Permissions may change since the last time it was detected
     buf->can_write = can_write(buf->filename);
 
-    if (!buf->can_write)
+    if (!buf->can_write) {
+        message("Can't write to this file");
+
         return false;
+    }
 
     FILE *fpw = fopen(buf->filename, "w");
 
@@ -19,7 +22,7 @@ bool savefile(Buffer *buf) {
         snprintf(buf, 1000, "Could not open the file; Errno: %d", errno);
 
         message(buf);
-        return;
+        return false;
     }
 
     Line *line = buf->cursor.y;
@@ -27,7 +30,7 @@ bool savefile(Buffer *buf) {
         line = line->prev;
 
     while (line) {
-        for (size_t i = 0; i < line.len; i++) {
+        for (size_t i = 0; i < line->len; i++) {
             unsigned char b[4];
             int len = utf8ToMultibyte(line.data[j], b, 0);
             fwrite(b, sizeof(unsigned char), len, fpw);

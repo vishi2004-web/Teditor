@@ -69,7 +69,7 @@ DEF_COMMAND(manual, {
 
         p += sprintf(p, ".txt");
 
-        open_file(home_path(fname), n);
+        open_file(home_path(filename), n);
     } else
         open_file(home_path(".config/ted/docs/help.txt"), n);
 
@@ -96,20 +96,18 @@ DEF_COMMAND(find, {
 
     if (!from_cursor)
         while (line->prev)
-            line = line.prev
+            line = line->prev;
     
     // TODO: work with spaces too
     size_t len = strlen(words[words_len - 1]);
 
     while (line) {
-        if (line.len >= len) {
-            
-
-            index = uchar32_sub(
+        if (line->len >= len) {
+            int index = uchar32_sub(
                 // TODO: fix this line (confusing and big)
-                from_cursor && line == buf->cursor.y ? &line.data[buf->cursor.x] : line.data
+                (from_cursor && line == buf->cursor.y) ? &line->data[buf->cursor.x] : line->data,
                 words[words_len - 1],
-                line.len, len
+                line->len, len
             );
             if (index >= 0) {
                 if (from_cursor && line == buf->cursor.y)

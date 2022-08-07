@@ -118,6 +118,7 @@ bool process_keypress(int c, Node **n) {
     } case '\n': case KEY_ENTER: case '\r': { // NEWLINE; ENTER; CARRIAGE RETURN
         if (modify(buf))
             break_selected_line(buf);
+        // TODO: implement autotab
         break;
     }
     }
