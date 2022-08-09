@@ -59,6 +59,11 @@ void break_selected_line(Buffer *buf) {
     append_line(snd, fst);
 }
 
+void type_character(uchar32_t c, Buffer *buf) {
+    line_insert(c, buf->cursor.x, buf->cursor.y);
+    buf->cursor.x++;
+}
+
 
 
 // Should be called after incrementing the cursor position
@@ -76,3 +81,5 @@ bool modify(Buffer *buf) {
 
     return !buf->read_only;
 }
+
+

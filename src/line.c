@@ -13,9 +13,28 @@ void free_line(Line *line) {
     free(line);
 }
 
+void all_lines_freedom(Line *line) {
+    Line *next = line->next;
+    while (next) {
+        Line *nextnext = next->next;
+        free_line(next);
+        next = nextnext;
+    }
+
+
+    Line *prev = line->prev;
+    while (prev) {
+        Line *prevprev = prev->prev;
+        free_line(prev);
+        prev = prevprev;
+    }
+
+    free_line(line);
+}
+
 Line *single_line(size_t cap) {
     Line ln = {
-        malloc(cap * sizeof uchar32_t), cap, 0,
+        malloc(cap * sizeof(uchar32_t)), cap, 0,
         NULL, NULL,
     };
     Line *r = malloc(sizeof ln);
@@ -29,7 +48,7 @@ void line_reserve(size_t space, Line *line) {
             // + 1 in case line->cap is 0
             line->cap = 2 * line->cap + 1;
     
-    line->data = realloc(line->data, line->cap * sizeof uchar32_t);
+    line->data = realloc(line->data, line->cap * sizeof(uchar32_t));
 }
 
 Line *prev_line(Line *line) {
@@ -45,9 +64,9 @@ void blank_line(Line *line) {
 
 void delete_line(Line *line) {
     if (line->prev)
-        line->prev.next = line->next;
+        line->prev->next = line->next;
     if (line->next)
-        line->next.prev = line->prev;
+        line->next->prev = line->prev;
 
     free_line(line);
 }
@@ -64,9 +83,9 @@ void delete_character_from_line(size_t index, Line *line) {
     memmove(
         &line->data[index],
         &line->data[index + 1],
-        (line->len - index - 1) * sizeof uchar32_t
+        (line->len - index - 1) * sizeof(uchar32_t)
     );
-    line.len--;
+    line->len--;
 }
 
 void append_line_to_line(Line a, Line *line) {
@@ -74,7 +93,13 @@ void append_line_to_line(Line a, Line *line) {
     memcpy(
         &line->data[line->len],
         a.data,
-        a.len * sizeof uchar32_t
+        a.len * sizeof(uchar32_t)
     );
     line->len += a.len;
+}
+
+void line_insert(uchar32_t c, size_t index, Line *line) {
+    line_reserve(1, line);
+    memmove(&line->data[index + 1], &line->data[index], line->len - index);
+    line->data[index] = c;
 }

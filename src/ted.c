@@ -10,7 +10,7 @@ TODO: use wcwidth and replace code points for grapheme clusters in order to have
 char *menu_message = "";
 
 GlobalCfg config = {
-    1, NULL, 4, 1, 1,
+    1, 0, 4, 1, 1,
 };
 
 jmp_buf end;
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
         strcpy(filename, buffer);
 
         FILE *fp = fopen(filename, "r");
-        buf = single_buffer(read_lines(fp, filename, can_write(filename)));
+        buf = single_buffer(read_file_into_buffer(fp, filename));
         if (fp)
             fclose(fp);
     } else {
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
             filename = smaller_filename;
 
             FILE *fp = fopen(filename, "r");
-            Buffer b = read_lines(fp, filename, can_write(filename));
+            Buffer b = read_file_into_buffer(fp, filename);
             if (i == 1)
                 buf = single_buffer(b);
             else
@@ -120,10 +120,10 @@ int main(int argc, char **argv) {
                 last_LINES = LINES;
                 last_COLS = COLS;
                 config.lines = LINES - 1;
-                cursor_in_valid_position(&buf->data);
+                cursor_to_valid_position(&buf->data);
             }
 
-            int len_line_number = calculate_len_line_number(buf->data);
+            int len_line_number = number_length(config.lines, 10);
 
             calculate_scroll(&buf->data, len_line_number);
 

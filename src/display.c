@@ -16,11 +16,11 @@ void display_menu(const char *message, const char *shadow, Node *n) {
 
         char b[500];
         int len = snprintf(
-            b, 500, "%s%s%s %s | %s<-%s->%s",
-            buf->modified ? "!" : ".",
-            buf->read_only ? "o" : "c",
-            buf->can_write ? "W" : "R",
-            buf->line_break_type == 0 ? "LF" : "CRLF"),
+            b, 500, "%c%c%c %s | %s<-%s->%s",
+            buf->modified ? '!' : '.',
+            buf->read_only ? 'o' : 'c',
+            buf->can_write ? 'W' : 'R',
+            buf->line_break_type == 0 ? "LF" : "CRLF",
             n->prev->data.name,
             buf->name,
             n->next->data.name
@@ -63,14 +63,14 @@ void display_buffer(Buffer buf, int len_line_number) {
                 if (j + buf.scroll.x == buf.cursor.x && line == buf.cursor.y)
                     attron(A_REVERSE);
 
-                if (buf.scroll.x + j >= line.len) {
+                if (buf.scroll.x + j >= line->len) {
                     addch(' ');
                 } else {
-                    uchar32_t el = line.data[buf.scroll.x + j];
+                    uchar32_t el = line->data[buf.scroll.x + j];
 
                     // TODO: handle full-width unicode characters
 
-                    if (el = '\t') {
+                    if (el == '\t') {
                         for (size_t k = 0; k < config.tablen; k++)
                             addch(' ');
                         size += config.tablen - 1;

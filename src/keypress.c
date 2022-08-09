@@ -9,7 +9,7 @@
 
 
 bool process_keypress(int c, Node **n) {
-    Buffer *buf = (*n)->data;
+    Buffer *buf = &(*n)->data;
     if (c != ERR)
         message("");
 
@@ -40,7 +40,7 @@ bool process_keypress(int c, Node **n) {
     case KEY_RIGHT:
     case ctrl('f'):
         buf->cursor.x++;
-        cursor_in_valid_position(buf);
+        cursor_to_valid_position(buf);
         buf->cursor.last_x = buf->cursor.x;
         break;
     case KEY_HOME:
@@ -50,7 +50,7 @@ bool process_keypress(int c, Node **n) {
         break;
     case KEY_END:
     case ctrl('e'):
-        buf->cursor.x = buf->lines[buf->cursor.y].length;
+        buf->cursor.x = buf->cursor.y->len;
         buf->cursor.last_x = buf->cursor.x;
         break;
     case ctrl('s'):
@@ -125,14 +125,14 @@ bool process_keypress(int c, Node **n) {
 
     if (isprint(c) || c == '\t' || (c >= 0xC0 && c <= 0xDF) || (c >= 0xE0 && c <= 0xEF) || (c >= 0xF0 && c <= 0xF7)) {
         if (modify(buf)) {
-            size_t len = utf8_size(c);
+            int len = utf8_size(c);
             unsigned char ucs[4] = {c, 0, 0, 0};
 
-            for (size_t i = 1; i < len; i++)
+            for (int i = 1; i < len; i++)
                 ucs[i] = getch();
 
             if (validate_utf8(ucs))
-                type_character(utf8_to_utf32(ucs), buf);
+                type_character(utf8_to_utf32(ucs, len), buf);
             else
                 message("Invalid input, is your terminal UTF-8?");
         }

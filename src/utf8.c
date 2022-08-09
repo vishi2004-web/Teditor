@@ -12,7 +12,7 @@ Utf8 sequences range
 4 bytes sequence (1* INCLUSIVE 0xF0 - 0xF4) (2* INCLUSIVE 0x90 - 0xBF) (3* INCLUSIVE 0x80 - 0xBF) (4* INCLUSIVE 0x80 - 0xBF)
 */
 
-unsigned char utf8_size(unsigned char c) {
+int utf8_size(unsigned char c) {
     if (c >= 0xF0 && c <= 0xF4)
         return 4;
     if (c >= 0xE0 && c <= 0xEF)
@@ -22,9 +22,9 @@ unsigned char utf8_size(unsigned char c) {
     return 1;
 }
 
-uchar32_t utf8_to_utf32(unsigned char ucs[4]) {
+uchar32_t utf8_to_utf32(unsigned char ucs[4], int size) {
     uchar32_t c = 0;
-    for (int i = 0, off = 0; i < len; i++, off += 8)
+    for (int i = 0, off = 0; i < size; i++, off += 8)
         c += ucs[i] << off;
     return c;
 }

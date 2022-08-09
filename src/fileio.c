@@ -32,7 +32,7 @@ bool savefile(Buffer *buf) {
     while (line) {
         for (size_t i = 0; i < line->len; i++) {
             unsigned char b[4];
-            int len = utf8ToMultibyte(line.data[j], b, 0);
+            int len = utf8ToMultibyte(line->data[i], b, 0);
             fwrite(b, sizeof(unsigned char), len, fpw);
         }
 
@@ -52,11 +52,13 @@ bool savefile(Buffer *buf) {
     return true;
 }
 
-Buffer read_file_into_buffer(FILE *fp, char *filename, bool can_write) {
+Buffer read_file_into_buffer(FILE *fp, char *filename) {
     Buffer b = empty_buffer();
 
-    b.read_only = !can_write;
-    b.can_write = can_write;
+    bool canw = can_write(filename);
+
+    b.read_only = !canw;
+    b.can_write = canw;
     b.filename = filename;
 
     if (!fp) {
@@ -73,25 +75,23 @@ Buffer read_file_into_buffer(FILE *fp, char *filename, bool can_write) {
         line = line->next;
 
         for (size_t i = 0; !feof(fp); i++) {
-            if (c == '\r')
-                continue;
-
             char c = fgetc(fp);
 
+            if (c == '\r')
+                continue;
             if (c == '\n')
                 break;
 
             line_reserve(1, line);
 
             unsigned char ucs[4] = {c, 0, 0, 0};
-            for (size_t i = 1; i < len; i++)
+            int len = utf8_size(c);
+            for (int i = 1; i < len; i++)
                 ucs[i] = fgetc(fp);
 
-            line.data[i] = validate_utf8(ucs)
-                ? utf8_to_utf32(ucs) : substitute_char;
-
-            utf8ReadFile(uc, line.data + i, fp);
-            line.len++;
+            line->data[i] = validate_utf8(ucs)
+                ? utf8_to_utf32(ucs, len) : substitute_char;
+            line->len++;
         }
     }
 
@@ -121,7 +121,7 @@ unsigned char detect_linebreak(FILE *fp) {
 
 void open_file(char *fname, Node **n) {
     FILE *fp = fopen(fname, "r");
-    buffer_add_next(*n, read_lines(fp, fname, can_write(fname)));
+    buffer_add_next(*n, read_file_into_buffer(fp, fname));
     parse_command("next", n);
     if (fp != NULL)
         fclose(fp);

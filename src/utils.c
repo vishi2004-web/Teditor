@@ -71,18 +71,6 @@ char **split_str(const char *str, int *num_str) {
     return strs;
 }
 
-int calculate_len_line_number(Buffer buf) {
-    // + 1 because lines numbers start with 1, not 0
-    int num = buf.num_lines + 1;
-    int i = 1;
-
-    do {
-        num /= 10;// base 10
-        ++i;
-    } while (num);
-    return i;
-}
-
 int uchar32_cmp(const uchar32_t *s1, const char *s2, unsigned int stringlen) {
     for (unsigned int j = 0; j < stringlen; j++)
         if ((uchar32_t)s2[j] != s1[j])
@@ -107,18 +95,6 @@ int uchar32_sub(const uchar32_t *hs, const char *sub, unsigned int hslen, unsign
     return -1; // No substring found
 }
 
-Line blank_line(void) {
-    Line ln;
-
-    ln.len = READ_BLOCKSIZE;
-    ln.data = malloc(ln.len * sizeof(*ln.data));
-    ln.length = 0;
-    ln.ident = 0;
-
-    *ln.data = '\0';
-    return ln;
-}
-
 char *bufn(int a) {
     const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     char *s = malloc(100);
@@ -133,3 +109,12 @@ char *bufn(int a) {
     return s;
 }
 
+int number_length(unsigned long num, int base) {
+    int i;
+    for (i = 1; num; i++) {
+        num /= base;
+        i++;
+    };
+
+    return i;
+}

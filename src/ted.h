@@ -109,7 +109,7 @@ bool parse_command(char *command, Node **n);
 
 // fileio.c
 bool savefile(Buffer *buf);
-Buffer read_lines(FILE *fp, char *filename, bool read_only);
+Buffer read_file_into_buffer(FILE *fp, char *filename);
 unsigned char detect_linebreak(FILE *fp);
 void open_file(char *fname, Node **n);
 bool can_write(char *fname);
@@ -130,8 +130,8 @@ bool process_keypress(int c, Node **n);
 bool process_mouse_event(MEVENT ev, Node **n);
 
 // utf8.c
-unsigned char utf8_size(unsigned char c);
-uchar32_t utf8_to_utf32(unsigned char ucs[4]);
+int utf8_size(unsigned char c);
+uchar32_t utf8_to_utf32(unsigned char ucs[4], int size);
 void utf8ReadFile(unsigned char uc, uchar32_t *out, FILE *fp_);
 int utf8ToMultibyte(uchar32_t c, unsigned char *out, bool validate);
 bool validate_utf8(unsigned char *ucs);
@@ -141,11 +141,11 @@ void die(const char *s);
 char *home_path(const char *path);
 char *split_spaces(char *str, char **save);
 char **split_str(const char *str, int *num_str);
-int calculate_len_line_number(Buffer buf);
 int uchar32_cmp(const uchar32_t *s1, const char *s2, unsigned int stringlen);
 int uchar32_casecmp(const uchar32_t *s1, const char *s2, unsigned int stringlen);
 int uchar32_sub(const uchar32_t *hs, const char *sub, unsigned int hslen, unsigned int sublen);
 char *bufn(int a);
+int number_length(unsigned long num, int base);
 
 // scroll.c
 void calculate_scroll(Buffer *buf, int len_line_number);
@@ -165,14 +165,14 @@ void clear_line_existence(Line *line, Buffer *buf);
 void delete_selected_line(Buffer *buf);
 void delete_character_before_selected(Buffer *buf);
 void break_selected_line(Buffer *buf);
-
-
+void type_character(uchar32_t c, Buffer *buf);
 void cursor_to_valid_position(Buffer *buf);
 bool modify(Buffer *buf);
 
 // line.c
 size_t get_ident(Line *ln);
 void free_line(Line *line);
+void all_lines_freedom(Line *line);
 Line *single_line(size_t cap);
 void line_reserve(size_t space, Line *line);
 Line *prev_line(Line *line);
@@ -182,6 +182,7 @@ void delete_line(Line *line);
 void append_line(Line *a, Line *line);
 void delete_character_from_line(size_t index, Line *line);
 void append_line_to_line(Line a, Line *line);
+void line_insert(uchar32_t c, size_t index, Line *line);
 
 extern GlobalCfg config;
 extern char *menu_message;
