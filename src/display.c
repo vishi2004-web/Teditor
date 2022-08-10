@@ -66,6 +66,7 @@ void display_buffer(Buffer buf, int len_line_number) {
                 if (buf.scroll.x + j >= line->len) {
                     addch(' ');
                 } else {
+                    fprintf(stderr, "%lx %lx %lx %lx\n", line, line->data, buf.scroll.x, j);
                     uchar32_t el = line->data[buf.scroll.x + j];
 
                     // TODO: handle full-width unicode characters

@@ -4,6 +4,7 @@ Buffer empty_buffer() {
     Line *fst_line = single_line(0);
 
     static int buffer_count = -1;
+    buffer_count++;
 
     Buffer b = {
         false,
@@ -19,21 +20,21 @@ Buffer empty_buffer() {
     return b;
 }
 
-void clear_line_existence(Line *line, Buffer *buf) {
+void delete_line_from_buffer(Line *line, Buffer *buf) {
     if (buf->cursor.y == line)
         buf->cursor.y = line->next ? line->next : line->prev;
 
     if (buf->scroll.y == line)
         buf->scroll.y = buf->cursor.y;
+
+    delete_line(line);
 }
 
 void delete_selected_line(Buffer *buf) {
-    if (buf->cursor.y->next || buf->cursor.y->prev) {
-        delete_line(buf->cursor.y);
-        clear_line_existence(buf->cursor.y, buf);
-    } else {
+    if (buf->cursor.y->next || buf->cursor.y->prev)
+        delete_line_from_buffer(buf->cursor.y, buf);
+    else
         blank_line(buf->cursor.y);
-    }
 }
 
 void delete_character_before_selected(Buffer *buf) {
@@ -41,8 +42,7 @@ void delete_character_before_selected(Buffer *buf) {
         delete_character_from_line(buf->cursor.x - 1, buf->cursor.y);
     else if (buf->cursor.y->prev) {
         append_line_to_line(*buf->cursor.y, buf->cursor.y->prev);
-        delete_line(buf->cursor.y);
-        clear_line_existence(buf->cursor.y, buf);
+        delete_line_from_buffer(buf->cursor.y, buf);
     } else {
         // BEEP
     }

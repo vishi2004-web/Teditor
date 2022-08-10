@@ -2,7 +2,7 @@
 
 size_t get_ident(Line *ln) {
     size_t r = 0;
-    for (size_t i = 0; ln->data[i] == ' '; i++)
+    for (size_t i = 0; i < ln->len && ln->data[i] == ' '; i++)
         r++;
     return r;
 }
@@ -75,7 +75,8 @@ void append_line(Line *a, Line *line) {
     a->next = line->next;
     a->prev = line;
 
-    line->next->prev = a;
+    if (line->next)
+        line->next->prev = a;
     line->next = a;
 }
 
